@@ -1,8 +1,8 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-TOKEN = "YOUR_BOT_TOKEN"
-ADMIN_CHAT_ID = "YOUR_ADMIN_CHAT_ID"  # Gantikan dengan ID grup admin
+TOKEN = "7964541493:AAEi8S448XgM0S2Xz27fWJ9h6G8f-SFy6Nw"
+ADMIN_CHAT_ID = "-1002238456592"  # Gantikan dengan ID grup admin
 bot = telebot.TeleBot(TOKEN)
 
 # Simpan maklumat pelanggan
