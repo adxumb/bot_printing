@@ -1,111 +1,97 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-TOKEN = "7964541493:AAEi8S448XgM0S2Xz27fWJ9h6G8f-SFy6Nw"
-GROUP_ID = "-1002238456592"
-ADMIN_ID = "1631295416"
+TOKEN = "YOUR_BOT_TOKEN"
+ADMIN_CHAT_ID = "YOUR_ADMIN_CHAT_ID"  # Gantikan dengan ID grup admin
 bot = telebot.TeleBot(TOKEN)
 
-users = {}
+# Simpan maklumat pelanggan
+print_requests = {}
+customer_chat = {}
 queue_number = 1
-confirmed_requests = set()
+
+def generate_order_summary(user_id):
+    req = print_requests.get(user_id, {})
+    return (f"🖨 *Cetakan Baru*
+Nombor Giliran: {req.get('queue_number', '-')}
+Nama: {req.get('name', '-')}
+Kelas: {req.get('class', '-')}
+Jenis: {req.get('color', '-')}"
+    )
+
+def admin_keyboard(user_id):
+    keyboard = InlineKeyboardMarkup()
+    keyboard.row(
+        InlineKeyboardButton("✅ Cetakan Siap", callback_data=f"done_{user_id}"),
+        InlineKeyboardButton("❌ Cetakan Belum Siap", callback_data=f"not_done_{user_id}")
+    )
+    keyboard.row(
+        InlineKeyboardButton("💬 Hubungi Pelanggan", callback_data=f"chat_{user_id}")
+    )
+    return keyboard
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    welcome_text = ("Selamat datang ke servis printing BWP PDRM Kulim!\n\n"
-                    "Servis ini dibina untuk memudahkan urusan cetakan oleh BWP sendiri.\n\n"
-                    "📌 **Cara guna bot:**\n"
-                    "1️⃣ Masukkan nama dan kelas anda.\n"
-                    "2️⃣ Pilih jenis cetakan (warna/hitam putih).\n"
-                    "3️⃣ Masukkan jumlah salinan.\n"
-                    "4️⃣ Hantar bukti pembayaran.\n"
-                    "5️⃣ Admin akan sahkan & proses cetakan.\n"
-                    "6️⃣ Gunakan `/status` untuk semak status cetakan anda.\n\n"
-                    "💰 Harga:\n"
-                    "- Warna: RM2.00 per helai\n"
-                    "- Hitam Putih: RM0.50 per helai\n\n"
-                    "📢 Kredit:\n"
-                    "- **Adam Zuwairi** - President BWP 24/25 (Pembangun Bot)\n"
-                    "- **Umaira Aqilah** - Exco Keusahawanan 24/25 (Idea Bot)")
-    bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown")
-    bot.send_message(message.chat.id, "Sila masukkan nama anda.")
-    users[message.chat.id] = {"step": "name"}
-
-@bot.message_handler(func=lambda message: message.chat.id in users and users[message.chat.id]["step"] == "name")
-def get_name(message):
-    users[message.chat.id]['name'] = message.text
-    users[message.chat.id]['step'] = "class"
-    bot.send_message(message.chat.id, "Masukkan kelas anda.")
-
-@bot.message_handler(func=lambda message: message.chat.id in users and users[message.chat.id]["step"] == "class")
-def get_class(message):
-    users[message.chat.id]['class'] = message.text
-    users[message.chat.id]['step'] = "color"
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("Warna (RM2.00)", callback_data='color'))
-    markup.add(InlineKeyboardButton("Hitam Putih (RM0.50)", callback_data='bw'))
-    bot.send_message(message.chat.id, "Pilih jenis cetakan:", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda call: call.data in ['color', 'bw'])
-def get_color(call):
-    users[call.message.chat.id]['color'] = call.data
-    users[call.message.chat.id]['step'] = "copies"
-    bot.send_message(call.message.chat.id, "Berapa salinan yang diperlukan?")
-    bot.answer_callback_query(call.id)
-
-@bot.message_handler(func=lambda message: message.chat.id in users and users[message.chat.id]["step"] == "copies")
-def get_copies(message):
     global queue_number
-    try:
-        copies = int(message.text)
-        users[message.chat.id]['copies'] = copies
-        users[message.chat.id]['price'] = copies * (2.00 if users[message.chat.id]['color'] == 'color' else 0.50)
-        users[message.chat.id]['queue'] = queue_number
-        users[message.chat.id]['step'] = "payment"
-        queue_number += 1
-        bot.send_message(message.chat.id, f"Harga: RM{users[message.chat.id]['price']:.2f}. Sila hantar gambar bukti pembayaran.")
-    except ValueError:
-        bot.send_message(message.chat.id, "Masukkan nombor yang sah.")
+    user_id = message.chat.id
+    bot.send_message(user_id, "Selamat datang ke servis printing BWP PDRM Kulim!")
+    print_requests[user_id] = {"queue_number": queue_number}
+    queue_number += 1
+    bot.send_message(user_id, "Sila masukkan nama anda.")
+
+@bot.message_handler(func=lambda message: message.chat.id in print_requests and 'name' not in print_requests[message.chat.id])
+def get_name(message):
+    user_id = message.chat.id
+    print_requests[user_id]['name'] = message.text
+    bot.send_message(user_id, "Masukkan kelas anda.")
+
+@bot.message_handler(func=lambda message: message.chat.id in print_requests and 'class' not in print_requests[message.chat.id])
+def get_class(message):
+    user_id = message.chat.id
+    print_requests[user_id]['class'] = message.text
+    bot.send_message(user_id, "Warna atau hitam putih? (Tulis 'Color' atau 'B/W')")
+
+@bot.message_handler(func=lambda message: message.chat.id in print_requests and 'color' not in print_requests[message.chat.id])
+def get_color(message):
+    user_id = message.chat.id
+    print_requests[user_id]['color'] = message.text
+    bot.send_message(user_id, "Hantar dokumen atau gambar untuk dicetak.")
+
+@bot.message_handler(content_types=['document', 'photo'])
+def receive_document(message):
+    user_id = message.chat.id
+    if user_id in print_requests:
+        bot.send_message(user_id, "Sila hantar bukti pembayaran.")
 
 @bot.message_handler(content_types=['photo'])
-def receive_payment_proof(message):
-    if message.chat.id in users and users[message.chat.id]['step'] == "payment":
-        users[message.chat.id]['payment_proof'] = message.photo[-1].file_id
-        users[message.chat.id]['step'] = "pending"
-        caption = (f"📄 **Permintaan Baru**\n"
-                   f"👤 Nama: {users[message.chat.id]['name']}\n"
-                   f"🏫 Kelas: {users[message.chat.id]['class']}\n"
-                   f"📑 Salinan: {users[message.chat.id]['copies']}\n"
-                   f"🎨 Jenis: {'Warna' if users[message.chat.id]['color'] == 'color' else 'Hitam Putih'}\n"
-                   f"💰 Harga: RM{users[message.chat.id]['price']:.2f}\n"
-                   f"🔢 Nombor Giliran: {users[message.chat.id]['queue']}")
-        bot.send_photo(GROUP_ID, users[message.chat.id]['payment_proof'], caption=caption, reply_markup=confirm_markup(message.chat.id))
-        bot.send_message(message.chat.id, "Bukti bayaran telah dihantar kepada admin untuk pengesahan.")
+def receive_payment(message):
+    user_id = message.chat.id
+    if user_id in print_requests and 'payment' not in print_requests[user_id]:
+        print_requests[user_id]['payment'] = True
+        summary = generate_order_summary(user_id)
+        bot.send_message(user_id, "Permintaan anda telah dihantar kepada admin!")
+        bot.send_message(ADMIN_CHAT_ID, summary, reply_markup=admin_keyboard(user_id))
     else:
-        bot.send_message(message.chat.id, "Sila lengkapkan maklumat sebelum hantar bukti pembayaran.")
+        bot.send_message(user_id, "Bukti pembayaran telah dihantar sebelum ini.")
 
-def confirm_markup(user_id):
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("✅ Sahkan Cetakan", callback_data=f'confirm_{user_id}'))
-    return markup
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('confirm_'))
-def confirm_printing(call):
+@bot.callback_query_handler(func=lambda call: call.data.startswith('done_') or call.data.startswith('not_done_'))
+def update_status(call):
     user_id = int(call.data.split('_')[1])
-    if user_id in users and user_id not in confirmed_requests:
-        confirmed_requests.add(user_id)
-        bot.send_message(user_id, "✅ Cetakan anda telah disahkan oleh admin dan sedang diproses.")
-        bot.send_message(GROUP_ID, f"🖨 Cetakan untuk {users[user_id]['name']} telah disahkan.")
-    else:
-        bot.answer_callback_query(call.id, "Cetakan ini sudah disahkan.", show_alert=True)
+    status = "Siap!" if call.data.startswith('done_') else "Belum Siap."
+    bot.send_message(user_id, f"Status cetakan anda: {status}")
+    bot.answer_callback_query(call.id, "Status dikemaskini.")
 
-@bot.message_handler(commands=['status'])
-def check_status(message):
-    if message.chat.id in users:
-        status = "⏳ Dalam proses" if users[message.chat.id]['step'] == "pending" else "✅ Selesai"
-        bot.send_message(message.chat.id, f"📋 Status cetakan anda: {status}")
-    else:
-        bot.send_message(message.chat.id, "Tiada rekod cetakan anda.")
+@bot.callback_query_handler(func=lambda call: call.data.startswith('chat_'))
+def contact_customer(call):
+    user_id = int(call.data.split('_')[1])
+    customer_chat[call.message.chat.id] = user_id
+    bot.send_message(call.message.chat.id, "Anda kini boleh menghantar mesej kepada pelanggan.")
+    bot.answer_callback_query(call.id)
 
-bot.polling(none_stop=True)
+@bot.message_handler(func=lambda message: message.chat.id in customer_chat)
+def relay_message_to_customer(message):
+    user_id = customer_chat[message.chat.id]
+    bot.send_message(user_id, f"📩 Admin: {message.text}")
+
+bot.polling()
 
