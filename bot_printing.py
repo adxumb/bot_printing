@@ -1,9 +1,9 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-TOKEN = "YOUR_BOT_TOKEN"
-GROUP_ID = "YOUR_GROUP_ID"
-ADMIN_ID = "YOUR_ADMIN_ID"
+TOKEN = "7964541493:AAEi8S448XgM0S2Xz27fWJ9h6G8f-SFy6Nw"
+GROUP_ID = "-1002238456592"
+ADMIN_ID = "1631295416"
 
 bot = telebot.TeleBot(TOKEN)
 
