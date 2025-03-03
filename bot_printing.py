@@ -1,115 +1,113 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputFile
 
-# Gantikan dengan Token Bot Telegram anda
-TOKEN = '7964541493:AAEi8S448XgM0S2Xz27fWJ9h6G8f-SFy6Nw'
-ADMIN_ID = '-1002238456592'
-QR_CODE_PATH = '/mnt/data/image.png'  # Path gambar QR Code
+# Ruang untuk masukkan token dan ID
+TOKEN = "7964541493:AAEi8S448XgM0S2Xz27fWJ9h6G8f-SFy6Nw"
+ID_ADMIN = ["1631295416"]  # Masukkan ID admin dalam senarai
+ID_GROUP = "-1002238456592"
+QR_CODE_PATH = "/mnt/data/image.png"  # Lokasi QR Code
 
 bot = telebot.TeleBot(TOKEN)
 
-# Menu permulaan
+# Fungsi untuk permulaan bot
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🖨️ Mula Tempahan", callback_data='start_order'))
-    
     welcome_text = """
-    📢 *Selamat Datang ke Bot Printing!*
+    🔹 *Selamat datang ke Bot Cetakan BWP MRSM PDRM!* 🔹
     
     🖨️ *Cara guna bot:*
-    1️⃣ Tekan "Mula Tempahan" untuk buat tempahan.
-    2️⃣ Masukkan *Nama & Kelas*.
-    3️⃣ Pilih *Jenis Cetakan* & bayar melalui *Touch 'n Go*.
-    4️⃣ Hantar *bukti pembayaran* dan *dokumen*.
+    1️⃣ Tekan "*Mula Tempahan*" untuk buat tempahan.
+    2️⃣ Masukkan Nama & Kelas.
+    3️⃣ Pilih Jenis Cetakan & bayar melalui Touch ‘n Go.
+    4️⃣ Hantar bukti pembayaran dan dokumen.
     5️⃣ Semak status cetakan dengan "📌 Tanya Status".
     
     💰 *Harga cetakan:*
-    🎨 Warna → RM2.00/salinan
-    ⚫ Hitam Putih → RM0.50/salinan
+    🎨 Warna → RM2.00 per salinan
+    ⚫ Hitam Putih → RM0.50 per salinan
     
-    ℹ️ *Gunakan /help jika perlukan bantuan.*
+    📢 Tekan "🖨️ Mula Tempahan" untuk mula.
+    📌 Gunakan /help jika anda perlukan bantuan.
     """
-    
-    bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🖨️ Mula Tempahan", callback_data="start_order"))
+    bot.send_photo(message.chat.id, photo=InputFile(QR_CODE_PATH), caption=welcome_text, reply_markup=markup, parse_mode="Markdown")
 
-# Menu bantuan
+# Fungsi bantuan
 @bot.message_handler(commands=['help'])
 def send_help(message):
     help_text = """
-    🆘 *Bantuan & FAQ*
+    🤖 *Bantuan Bot Cetakan* 🤖
     
-    📌 *Cara guna bot:*
-    1️⃣ Tekan "Mula Tempahan" untuk buat tempahan.
-    2️⃣ Masukkan *Nama & Kelas*.
-    3️⃣ Pilih *Jenis Cetakan*.
-    4️⃣ Hantar *bukti pembayaran* dan *dokumen*.
-    5️⃣ Semak status cetakan dengan "📌 Tanya Status".
+    📝 *Cara guna bot:*
+    - Tekan "*Mula Tempahan*"
+    - Masukkan butiran cetakan
+    - Hantar bukti pembayaran
     
-    ❌ Guna /cancel untuk batalkan tempahan sebelum diproses.
+    📌 *Semak status cetakan:*
+    - Gunakan /status untuk melihat status cetakan
     
-    🆘 *Hubungi Admin:* Tekan butang di bawah untuk hubungi admin.
+    ❌ *Guna /cancel* untuk batalkan tempahan sebelum diproses.
+    
+    📞 *Hubungi Admin:*
+    - Gunakan /admin [Mesej] untuk hubungi admin.
     """
-    
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🆘 Hubungi Admin", url=f"https://t.me/{ADMIN_ID}"))
-    
-    bot.send_message(message.chat.id, help_text, parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(message.chat.id, help_text, parse_mode="Markdown")
 
-# Proses tempahan
-@bot.callback_query_handler(func=lambda call: call.data == 'start_order')
-def start_order(call):
-    bot.send_message(call.message.chat.id, "📌 Sila masukkan nama dan kelas anda.")
-    bot.register_next_step_handler(call.message, get_name)
+# Fungsi pelanggan hubungi admin
+@bot.message_handler(commands=['admin'])
+def contact_admin(message):
+    text = message.text.replace('/admin', '').strip()
+    if text:
+        for admin in ID_ADMIN:
+            bot.send_message(admin, f"📩 Mesej dari pelanggan @{message.chat.username}: {text}")
+        bot.send_message(message.chat.id, "Mesej anda telah dihantar kepada admin!")
+    else:
+        bot.send_message(message.chat.id, "Sila masukkan mesej selepas /admin untuk hubungi admin.")
 
-def get_name(message):
-    name = message.text
-    bot.send_message(message.chat.id, "📌 Pilih jenis cetakan:", reply_markup=print_options())
+# Fungsi admin hubungi pelanggan
+@bot.message_handler(commands=['chat'])
+def chat_with_user(message):
+    if message.chat.id in ID_ADMIN:
+        bot.send_message(message.chat.id, "Masukkan ID pelanggan dan mesej dalam format: \nID_PELANGGAN:Mesej")
+    else:
+        bot.send_message(message.chat.id, "Anda bukan admin!")
 
-def print_options():
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🎨 Warna - RM2.00/salinan", callback_data='color'))
-    markup.add(InlineKeyboardButton("⚫ Hitam Putih - RM0.50/salinan", callback_data='bw'))
-    return markup
-
-@bot.callback_query_handler(func=lambda call: call.data in ['color', 'bw'])
-def select_print_type(call):
-    print_type = "Warna" if call.data == 'color' else "Hitam Putih"
-    bot.send_message(call.message.chat.id, f"💰 Anda pilih *{print_type}*. Sila masukkan bilangan salinan.", parse_mode="Markdown")
-    bot.register_next_step_handler(call.message, get_quantity, print_type)
-
-def get_quantity(message, print_type):
+@bot.message_handler(func=lambda message: ':' in message.text and message.chat.id in ID_ADMIN)
+def send_admin_message(message):
     try:
-        quantity = int(message.text)
-        price = quantity * (2 if print_type == "Warna" else 0.5)
-        
-        bot.send_message(message.chat.id, f"💵 Jumlah yang perlu dibayar: *RM{price:.2f}*\nSila buat bayaran menggunakan Touch 'n Go dan hantar bukti pembayaran.", parse_mode="Markdown")
-        
-        with open(QR_CODE_PATH, 'rb') as qr_code:
-            bot.send_photo(message.chat.id, qr_code, caption="📌 Imbas QR ini untuk pembayaran.")
-        
-        bot.register_next_step_handler(message, receive_payment)
-    except ValueError:
-        bot.send_message(message.chat.id, "❌ Sila masukkan nombor yang betul.")
-        bot.register_next_step_handler(message, get_quantity, print_type)
+        user_id, text = message.text.split(':', 1)
+        user_id = int(user_id.strip())
+        bot.send_message(user_id, text.strip())
+        bot.send_message(message.chat.id, "Mesej dihantar kepada pelanggan!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ralat: {e}")
 
-def receive_payment(message):
-    if message.photo:
-        bot.send_message(message.chat.id, "✅ Bukti pembayaran diterima. Sila hantar dokumen untuk dicetak.")
-        bot.register_next_step_handler(message, receive_document)
-    else:
-        bot.send_message(message.chat.id, "❌ Sila hantar gambar bukti pembayaran.")
-        bot.register_next_step_handler(message, receive_payment)
+# Fungsi pembatalan tempahan
+@bot.message_handler(commands=['cancel'])
+def cancel_order(message):
+    bot.send_message(message.chat.id, "Tempahan anda telah dibatalkan.")
 
-def receive_document(message):
-    if message.document or message.photo:
-        bot.send_message(message.chat.id, "📄 Dokumen diterima. Cetakan akan diproses. Anda boleh semak status menggunakan 📌 Tanya Status.")
-        bot.send_message(ADMIN_ID, f"📌 *Permintaan Baru!*\n👤 Pelanggan: {message.chat.id}\n📄 Dokumen dihantar. Sila semak pembayaran.", parse_mode="Markdown")
-    else:
-        bot.send_message(message.chat.id, "❌ Sila hantar dokumen dalam format yang betul.")
-        bot.register_next_step_handler(message, receive_document)
+# Fungsi untuk melihat status cetakan
+@bot.message_handler(commands=['status'])
+def check_status(message):
+    bot.send_message(message.chat.id, "📌 Status cetakan anda sedang diproses. Sila tunggu notifikasi.")
 
-bot.polling()
+# Kredit bot
+@bot.message_handler(commands=['credit'])
+def bot_credit(message):
+    credit_text = """
+    🔹 *Bot Printing BWP MRSM PDRM* 🔹
+    
+    👨‍💻 *Dibangunkan oleh:*
+    - **Adam Zuwairi** - Pembina bot
+    - **Umaira Aqilah** - Idea servis bot printing
+    
+    🤝 Terima kasih kerana menggunakan bot ini!
+    """
+    bot.send_message(message.chat.id, credit_text, parse_mode="Markdown")
+
+bot.polling(none_stop=True)
 
 
 
